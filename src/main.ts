@@ -49,32 +49,22 @@ function getPointerPos(event: PointerEvent): Point {
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const allStrokes = [...strokes];
-
-  if (currentStroke !== null) {
-    allStrokes.push(currentStroke);
-  }
-
-  for (const stroke of allStrokes) {
+  for (const stroke of strokes) {
     ctx.beginPath();
     ctx.strokeStyle = stroke.color;
     ctx.lineWidth = stroke.width;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    const firstPoint = stroke.points[0];
 
-    if (!firstPoint) {
+    if (stroke.points.length === 0) {
       continue;
     }
 
+    const firstPoint = stroke.points[0];
     ctx.moveTo(firstPoint.x, firstPoint.y);
 
-    if (stroke.points.length === 1) {
-      ctx.lineTo(firstPoint.x, firstPoint.y);
-    }
-
-    for (const point of stroke.points.slice(1)) {
+    for (let i = 1; i < stroke.points.length; i++) {
+      const point = stroke.points[i];
       ctx.lineTo(point.x, point.y);
     }
 
@@ -95,6 +85,8 @@ canvas.addEventListener("pointerdown", (event) => {
     width: 4,
   };
 
+  strokes.push(currentStroke);
+
   canvas.setPointerCapture(event.pointerId);
   render();
 });
@@ -109,10 +101,6 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 canvas.addEventListener("pointerup", () => {
-  if (currentStroke === null) {
-    return;
-  }
-  strokes.push(currentStroke);
   currentStroke = null;
   render();
 });
@@ -124,9 +112,7 @@ redrawButton.textContent = "Redraw";
 
 redrawButton.addEventListener("click", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  setTimeout(() => {
-    render();
-  }, 500);
+  setTimeout(render, 500);
 });
 
 app.append(redrawButton);

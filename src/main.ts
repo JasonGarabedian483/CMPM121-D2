@@ -34,6 +34,7 @@ type Stroke = {
 
 const strokes: Stroke[] = [];
 let currentStroke: Stroke | null = null;
+let currentPointerId: number | null = null;
 
 // mouse position tracking
 
@@ -46,30 +47,53 @@ function getPointerPos(event: PointerEvent): Point {
 }
 
 // drawing function
+function drawStroke(stroke: Stroke) {
+  if (stroke.points.length === 0) return;
+
+  ctx.save(); //keep this stroke's styles from leaking into the next one
+  ctx.strokeStyle = stroke.color;
+  ctx.lineWidth = stroke.width;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.beginPath();
+  const firstPoint = stroke.points[0];
+  ctx.moveTo(firstPoint.x, firstPoint.y);
+  if (stroke.points.length === 1) {
+    ctx.lineTo(firstPoint.x, firstPoint.y); //single click leaves a dot
+  }
+  for (let i = 1; i < stroke.points.length; i++) {
+    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (const stroke of strokes) {
-    ctx.beginPath();
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    if (stroke.points.length === 0) {
-      continue;
-    }
-
-    const firstPoint = stroke.points[0];
-    ctx.moveTo(firstPoint.x, firstPoint.y);
-
-    for (let i = 1; i < stroke.points.length; i++) {
-      const point = stroke.points[i];
-      ctx.lineTo(point.x, point.y);
-    }
-
-    ctx.stroke();
+    drawStroke(stroke);
   }
+  if (currentStroke !== null) {
+    drawStroke(currentStroke);
+  }
+}
+
+//gesture handling
+//cancelled pointer, lost capture, or esc discard it
+function endGesture() {
+  const pointerId = currentPointerId;
+  currentStroke = null;
+  currentPointerId = null;
+  if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+    canvas.releasePointerCapture(pointerId);
+  }
+}
+
+function cancelGesture() {
+  if (currentStroke === null) return;
+  endGesture();
+  render();
 }
 
 // drawing event listeners
@@ -85,14 +109,14 @@ canvas.addEventListener("pointerdown", (event) => {
     width: 4,
   };
 
-  strokes.push(currentStroke);
+  currentPointerId = event.pointerId;
 
   canvas.setPointerCapture(event.pointerId);
   render();
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  if (currentStroke === null) {
+  if (currentStroke === null || event.pointerId !== currentPointerId) {
     return;
   }
 
@@ -100,11 +124,24 @@ canvas.addEventListener("pointermove", (event) => {
   render();
 });
 
-canvas.addEventListener("pointerup", () => {
-  currentStroke = null;
+canvas.addEventListener("pointerup", (event) => {
+  if (currentStroke === null || event.pointerId !== currentPointerId) return;
+  strokes.push(currentStroke);
+  endGesture();
   render();
 });
 
+canvas.addEventListener("pointercancel", (event) => {
+  if (event.pointerId === currentPointerId) cancelGesture();
+});
+
+canvas.addEventListener("lostpointercapture", (event) => {
+  if (event.pointerId === currentPointerId) cancelGesture();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") cancelGesture();
+});
 // redraw button
 
 const redrawButton = document.createElement("button");
@@ -124,7 +161,7 @@ clearButton.textContent = "Clear";
 
 clearButton.addEventListener("click", () => {
   strokes.length = 0;
-  currentStroke = null;
+  cancelGesture();
   render();
 });
 

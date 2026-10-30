@@ -67,6 +67,8 @@ const tools: Tool[] = [
   { name: "Thin", kind: "marker", color: "black", width: 2 },
   { name: "Thick", kind: "marker", color: "black", width: 8 },
   { name: "Smily Face", kind: "sticker", text: ":)", size: 40 },
+  { name: "Dinosaur", kind: "sticker", text: "🦕", size: 40 },
+  { name: "Star", kind: "sticker", text: "⭐️", size: 40 },
 ];
 
 let selectedTool = tools[0];

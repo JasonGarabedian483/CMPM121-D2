@@ -6,7 +6,8 @@ heading.textContent = "D2 Drawing Project";
 
 const message = document.createElement("p");
 message.textContent =
-  "To start drawing, click on the canvas below and use your mouse to draw.";
+  "Pick a marker and drag on the canvas, or pick a sticker and click to place it. " +
+  "Press Esc mid-stroke to cancel. Export PNG saves a 1600×1200 image with a white background.";
 
 const canvas = document.createElement("canvas");
 canvas.width = 800;
@@ -123,6 +124,7 @@ function drawSticker(sticker: Sticker, target: CanvasRenderingContext2D) {
 function addCommand(command: DrawCommand) {
   commands.push(command);
   redoStack.length = 0;
+  updateHistoryButtons();
 }
 
 function replay(target: CanvasRenderingContext2D) {
@@ -304,6 +306,11 @@ createButton.addEventListener("click", () => {
 
 app.append(customHeading, nameInput, stickerInput, createButton);
 
+function updateHistoryButtons() {
+  undoButton.disabled = commands.length === 0;
+  redoButton.disabled = redoStack.length === 0;
+}
+
 // redraw button
 
 const redrawButton = document.createElement("button");
@@ -325,6 +332,7 @@ undoButton.addEventListener("click", () => {
   const command = commands.pop();
   if (command) {
     redoStack.push(command);
+    updateHistoryButtons();
     render();
   }
 });
@@ -340,6 +348,7 @@ redoButton.addEventListener("click", () => {
   const command = redoStack.pop();
   if (command) {
     commands.push(command);
+    updateHistoryButtons();
     render();
   }
 });
@@ -352,10 +361,14 @@ const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
 
 clearButton.addEventListener("click", () => {
-  strokes.length = 0;
+  const ok = confirm(
+    "Clear the whole drawing? This also erases undo/redo history and cannot be undone.",
+  );
+  if (!ok) return;
   cancelGesture();
   redoStack.length = 0;
   commands.length = 0;
+  updateHistoryButtons();
   render();
 });
 
@@ -387,8 +400,9 @@ exportButton.addEventListener("click", () => {
     link.download = "myDrawing.png";
     link.click();
 
-    URL.revokeObjectURL(link.href);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   }, "image/png");
 });
 
 app.append(exportButton);
+updateHistoryButtons();

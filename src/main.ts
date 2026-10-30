@@ -360,3 +360,35 @@ clearButton.addEventListener("click", () => {
 });
 
 app.append(clearButton);
+
+// export button
+
+const exportButton = document.createElement("button");
+exportButton.textContent = "Export PNG";
+
+exportButton.addEventListener("click", () => {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = canvas.width * 2;
+  exportCanvas.height = canvas.height * 2;
+
+  const exportCtx = exportCanvas.getContext("2d");
+  if (!exportCtx) return;
+
+  exportCtx.fillStyle = "White";
+  exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  exportCtx.scale(2, 2);
+  replay(exportCtx);
+
+  exportCanvas.toBlob((blob) => {
+    if (!blob) return;
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "myDrawing.png";
+    link.click();
+
+    URL.revokeObjectURL(link.href);
+  }, "image/png");
+});
+
+app.append(exportButton);

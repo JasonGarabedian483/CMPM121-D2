@@ -59,9 +59,6 @@ let currentPointerId: number | null = null;
 const commands: DrawCommand[] = [];
 const redoStack: DrawCommand[] = [];
 
-//=====================================================================//
-// possibly add more emoji stickers, maybe replace with actual emojis? //
-//=====================================================================//
 const tools: Tool[] = [
   { name: "Normal", kind: "marker", color: "black", width: 4 },
   { name: "Thin", kind: "marker", color: "black", width: 2 },
@@ -319,10 +316,37 @@ redrawButton.addEventListener("click", () => {
 
 app.append(redrawButton);
 
+//Undo Button
+
+const undoButton = document.createElement("button");
+undoButton.textContent = "Undo";
+
+undoButton.addEventListener("click", () => {
+  const command = commands.pop();
+  if (command) {
+    redoStack.push(command);
+    render();
+  }
+});
+
+app.append(undoButton);
+
+//Redo Button
+
+const redoButton = document.createElement("button");
+redoButton.textContent = "Redo";
+
+redoButton.addEventListener("click", () => {
+  const command = redoStack.pop();
+  if (command) {
+    commands.push(command);
+    render();
+  }
+});
+
+app.append(redoButton);
+
 // clear button
-//======================//
-// I BROKE THIS - JASON //
-//======================//
 
 const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
@@ -330,6 +354,8 @@ clearButton.textContent = "Clear";
 clearButton.addEventListener("click", () => {
   strokes.length = 0;
   cancelGesture();
+  redoStack.length = 0;
+  commands.length = 0;
   render();
 });
 

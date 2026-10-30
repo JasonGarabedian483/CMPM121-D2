@@ -19,7 +19,7 @@ const ctx = canvas.getContext("2d")!;
 
 app.append(heading, message, canvas);
 
-// data saved for drawing strokes
+// data for drawing strokes
 
 type Point = {
   x: number;
@@ -32,9 +32,45 @@ type Stroke = {
   width: number;
 };
 
+type Sticker = {
+  position: Point;
+  text: string;
+  size: number;
+};
+
+type DrawCommand = {
+  kind: "stroke" | "sticker";
+  draw: (target: CanvasRenderingContext2D) => void;
+  stroke?: Stroke;
+};
+
+type Tool = {
+  name: string;
+  kind: "marker" | "sticker";
+  color?: string;
+  width?: number;
+  text?: string;
+  size?: number;
+};
+
 const strokes: Stroke[] = [];
 let currentStroke: Stroke | null = null;
 let currentPointerId: number | null = null;
+const commands: DrawCommand[] = [];
+const redoStack: DrawCommand[] = [];
+
+//=====================================================================//
+// possibly add more emoji stickers, maybe replace with actual emojis? //
+//=====================================================================//
+const tools: Tool[] = [
+  { name: "Normal", kind: "marker", color: "black", width: 4 },
+  { name: "Thin", kind: "marker", color: "black", width: 2 },
+  { name: "Thick", kind: "marker", color: "black", width: 8 },
+  { name: "Smily Face", kind: "sticker", text: ":)", size: 40 },
+];
+
+let selectedTool = tools[0];
+let currentSticker: Sticker | null = null;
 
 // mouse position tracking
 
@@ -46,52 +82,82 @@ function getPointerPos(event: PointerEvent): Point {
   };
 }
 
-// drawing function
-function drawStroke(stroke: Stroke) {
+// line drawing function
+function drawStroke(stroke: Stroke, target: CanvasRenderingContext2D = ctx) {
   if (stroke.points.length === 0) return;
 
-  ctx.save(); //keep this stroke's styles from leaking into the next one
-  ctx.strokeStyle = stroke.color;
-  ctx.lineWidth = stroke.width;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  target.save(); //keep this stroke's styles from leaking into the next one
+  target.strokeStyle = stroke.color;
+  target.lineWidth = stroke.width;
+  target.lineCap = "round";
+  target.lineJoin = "round";
 
-  ctx.beginPath();
+  target.beginPath();
   const firstPoint = stroke.points[0];
-  ctx.moveTo(firstPoint.x, firstPoint.y);
+  target.moveTo(firstPoint.x, firstPoint.y);
   if (stroke.points.length === 1) {
-    ctx.lineTo(firstPoint.x, firstPoint.y); //single click leaves a dot
+    target.lineTo(firstPoint.x, firstPoint.y); //single click leaves a dot
   }
   for (let i = 1; i < stroke.points.length; i++) {
-    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    target.lineTo(stroke.points[i].x, stroke.points[i].y);
   }
-  ctx.stroke();
-  ctx.restore();
+  target.stroke();
+  target.restore();
+}
+
+// sticker drawing function
+
+function drawSticker(sticker: Sticker, target: CanvasRenderingContext2D) {
+  target.save();
+  target.font = `${sticker.size}px sans-serif`;
+  target.textAlign = "center";
+  target.textBaseline = "middle";
+  target.fillStyle = "black";
+  target.fillText(
+    sticker.text,
+    sticker.position.x,
+    sticker.position.y,
+  );
+  target.restore();
+}
+
+function addCommand(command: DrawCommand) {
+  commands.push(command);
+  redoStack.length = 0;
+}
+
+function replay(target: CanvasRenderingContext2D) {
+  for (const command of commands) {
+    target.save();
+    command.draw(target);
+    target.restore();
+  }
 }
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const stroke of strokes) {
-    drawStroke(stroke);
-  }
+
+  replay(ctx);
+
   if (currentStroke !== null) {
     drawStroke(currentStroke);
   }
 }
 
-//gesture handling
-//cancelled pointer, lost capture, or esc discard it
+// gesture handling
+// cancelled pointer, lost capture, or esc discard it
 function endGesture() {
   const pointerId = currentPointerId;
   currentStroke = null;
   currentPointerId = null;
+  currentSticker = null;
   if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
     canvas.releasePointerCapture(pointerId);
   }
 }
 
 function cancelGesture() {
-  if (currentStroke === null) return;
+  if (currentPointerId === null) return;
   endGesture();
   render();
 }
@@ -99,15 +165,23 @@ function cancelGesture() {
 // drawing event listeners
 
 canvas.addEventListener("pointerdown", (event) => {
-  if (event.button !== 0 || currentStroke !== null) {
+  if (event.button !== 0 || currentPointerId !== null) {
     return;
   }
 
-  currentStroke = {
-    points: [getPointerPos(event)],
-    color: "black",
-    width: 4,
-  };
+  if (selectedTool.kind === "marker") {
+    currentStroke = {
+      points: [getPointerPos(event)],
+      color: selectedTool.color ?? "black",
+      width: selectedTool.width ?? 4,
+    };
+  } else {
+    currentSticker = {
+      position: getPointerPos(event),
+      text: selectedTool.text ?? "",
+      size: selectedTool.size ?? 40,
+    };
+  }
 
   currentPointerId = event.pointerId;
 
@@ -115,6 +189,9 @@ canvas.addEventListener("pointerdown", (event) => {
   render();
 });
 
+//==========================================================//
+// Currently doesn't handle stickers at all, will fix later //
+//==========================================================//
 canvas.addEventListener("pointermove", (event) => {
   if (currentStroke === null || event.pointerId !== currentPointerId) {
     return;
@@ -125,8 +202,30 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 canvas.addEventListener("pointerup", (event) => {
-  if (currentStroke === null || event.pointerId !== currentPointerId) return;
-  strokes.push(currentStroke);
+  if (event.pointerId !== currentPointerId) return;
+
+  if (currentStroke !== null) {
+    const stroke = currentStroke;
+    strokes.push(stroke);
+    addCommand({
+      kind: "stroke",
+      stroke: stroke,
+      draw(target) {
+        drawStroke(stroke, target);
+      },
+    });
+  }
+
+  if (currentSticker !== null) {
+    const sticker = currentSticker;
+
+    addCommand({
+      kind: "sticker",
+      draw(target) {
+        drawSticker(sticker, target);
+      },
+    });
+  }
   endGesture();
   render();
 });
@@ -142,6 +241,70 @@ canvas.addEventListener("lostpointercapture", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") cancelGesture();
 });
+
+const toolHeading = document.createElement("h3");
+toolHeading.textContent = "Drawing Tools";
+
+const toolButtons = document.createElement("div");
+
+function showTools() {
+  toolButtons.replaceChildren();
+
+  for (const tool of tools) {
+    const button = document.createElement("button");
+    button.textContent = tool.name;
+
+    if (tool === selectedTool) {
+      button.style.fontWeight = "bold";
+      button.style.border = "2px solid blue";
+    }
+
+    button.addEventListener("click", () => {
+      cancelGesture();
+      selectedTool = tool;
+      showTools();
+    });
+    toolButtons.append(button);
+  }
+}
+
+showTools();
+app.append(toolHeading, toolButtons);
+
+const customHeading = document.createElement("h3");
+customHeading.textContent = "Create a custom sticker";
+
+const nameInput = document.createElement("input");
+nameInput.placeholder = "Sticker name";
+
+const stickerInput = document.createElement("input");
+stickerInput.placeholder = "Emoji or text";
+
+const createButton = document.createElement("button");
+createButton.textContent = "Create Sticker";
+
+createButton.addEventListener("click", () => {
+  const name = nameInput.value.trim();
+  const text = stickerInput.value.trim();
+
+  if (name === "" || text === "") {
+    return;
+  }
+
+  tools.push({
+    name: name,
+    kind: "sticker",
+    text: text,
+    size: 40,
+  });
+
+  nameInput.value = "";
+  stickerInput.value = "";
+  showTools();
+});
+
+app.append(customHeading, nameInput, stickerInput, createButton);
+
 // redraw button
 
 const redrawButton = document.createElement("button");
@@ -155,6 +318,9 @@ redrawButton.addEventListener("click", () => {
 app.append(redrawButton);
 
 // clear button
+//======================//
+// I BROKE THIS - JASON //
+//======================//
 
 const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";

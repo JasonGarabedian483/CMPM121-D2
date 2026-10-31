@@ -18,7 +18,50 @@ canvas.style.touchAction = "none";
 
 const ctx = canvas.getContext("2d")!;
 
-app.append(heading, message, canvas);
+// Page layout
+
+app.style.backgroundColor = "#a8e7bb";
+app.style.color = "#103b12";
+app.style.fontFamily = "Arial, sans-serif";
+app.style.padding = "30px";
+app.style.minHeight = "100vh";
+
+document.body.style.margin = "0";
+document.body.style.backgroundColor = "#a8e7bb";
+
+heading.style.color = "#103b12";
+message.style.color = "#103b12";
+
+// styling for the work space
+const workSpace = document.createElement("div");
+workSpace.style.display = "flex";
+workSpace.style.flexDirection = "row";
+workSpace.style.alignItems = "flex-start";
+workSpace.style.gap = "15px";
+workSpace.style.width = "max-content";
+
+// styling for the canvas area
+const canvasArea = document.createElement("div");
+canvasArea.style.backgroundColor = "#3b793e";
+canvasArea.style.padding = "5px";
+canvasArea.style.borderRadius = "5px";
+canvasArea.style.flexShrink = "0";
+
+canvas.style.display = "block";
+canvas.style.borderRadius = "4px";
+canvasArea.append(canvas);
+
+// styling for the sidebar
+const sideBar = document.createElement("div");
+sideBar.style.width = "500px";
+sideBar.style.flexShrink = "0";
+sideBar.style.padding = "20px";
+sideBar.style.backgroundColor = "#3b793e";
+sideBar.style.borderRadius = "5px";
+sideBar.style.boxSizing = "border-box";
+
+workSpace.append(canvasArea, sideBar);
+app.append(heading, message, workSpace);
 
 // data for drawing strokes
 
@@ -61,9 +104,7 @@ const commands: DrawCommand[] = [];
 const redoStack: DrawCommand[] = [];
 
 const tools: Tool[] = [
-  { name: "Normal", kind: "marker", color: "black", width: 4 },
-  { name: "Thin", kind: "marker", color: "black", width: 2 },
-  { name: "Thick", kind: "marker", color: "black", width: 8 },
+  { name: "Marker", kind: "marker", color: "black", width: 4 },
   { name: "Smily Face", kind: "sticker", text: ":)", size: 40 },
   { name: "Dinosaur", kind: "sticker", text: "🦕", size: 40 },
   { name: "Star", kind: "sticker", text: "⭐️", size: 40 },
@@ -255,9 +296,18 @@ function showTools() {
     const button = document.createElement("button");
     button.textContent = tool.name;
 
+    button.style.backgroundColor = "#62a866";
+    button.style.color = "#103b12";
+    button.style.border = "2px solid #103b12";
+    button.style.padding = "10px 15px";
+    button.style.margin = "4px";
+    button.style.borderRadius = "6px";
+    button.style.cursor = "pointer";
+    button.style.fontWeight = "bold";
+
     if (tool === selectedTool) {
-      button.style.fontWeight = "bold";
-      button.style.border = "2px solid blue";
+      button.style.backgroundColor = "#80cf89";
+      button.style.border = "2px solid #d9f5df";
     }
 
     button.addEventListener("click", () => {
@@ -270,7 +320,30 @@ function showTools() {
 }
 
 showTools();
-app.append(toolHeading, toolButtons);
+sideBar.append(toolHeading, toolButtons);
+
+// marker thickness slider
+const thicknessLabel = document.createElement("label");
+thicknessLabel.textContent = "Marker Thickness: 4px";
+
+const thicknessSlider = document.createElement("input");
+thicknessSlider.type = "range";
+thicknessSlider.min = "1";
+thicknessSlider.max = "30";
+thicknessSlider.value = "4";
+
+thicknessSlider.style.width = "100%";
+thicknessSlider.style.cursor = "pointer";
+thicknessSlider.style.accentColor = "#526ce5";
+
+thicknessSlider.addEventListener("input", () => {
+  const thickness = Number(thicknessSlider.value);
+
+  tools[0].width = thickness;
+  thicknessLabel.textContent = `Marker Thickness: ${thickness}px`;
+});
+
+sideBar.append(thicknessLabel, thicknessSlider);
 
 const customHeading = document.createElement("h3");
 customHeading.textContent = "Create a custom sticker";
@@ -304,7 +377,7 @@ createButton.addEventListener("click", () => {
   showTools();
 });
 
-app.append(customHeading, nameInput, stickerInput, createButton);
+sideBar.append(customHeading, nameInput, stickerInput, createButton);
 
 function updateHistoryButtons() {
   undoButton.disabled = commands.length === 0;
@@ -321,7 +394,7 @@ redrawButton.addEventListener("click", () => {
   setTimeout(render, 500);
 });
 
-app.append(redrawButton);
+sideBar.append(redrawButton);
 
 //Undo Button
 
@@ -337,7 +410,7 @@ undoButton.addEventListener("click", () => {
   }
 });
 
-app.append(undoButton);
+sideBar.append(undoButton);
 
 //Redo Button
 
@@ -353,7 +426,7 @@ redoButton.addEventListener("click", () => {
   }
 });
 
-app.append(redoButton);
+sideBar.append(redoButton);
 
 // clear button
 
@@ -372,7 +445,7 @@ clearButton.addEventListener("click", () => {
   render();
 });
 
-app.append(clearButton);
+sideBar.append(clearButton);
 
 // export button
 
@@ -404,5 +477,59 @@ exportButton.addEventListener("click", () => {
   }, "image/png");
 });
 
-app.append(exportButton);
+function styleSidebar() {
+  const headings = sideBar.querySelectorAll("h3");
+
+  for (const heading of headings) {
+    heading.style.color = "#d9f5df";
+    heading.style.marginTop = "15px";
+    heading.style.marginBottom = "10px";
+  }
+
+  const buttons = sideBar.querySelectorAll("button");
+
+  for (const button of buttons) {
+    button.style.backgroundColor = "#62a866";
+    button.style.color = "#103b12";
+    button.style.border = "2px solid #103b12";
+    button.style.padding = "10px 15px";
+    button.style.margin = "4px";
+    button.style.borderRadius = "6px";
+    button.style.cursor = "pointer";
+    button.style.fontWeight = "bold";
+  }
+
+  const inputs = sideBar.querySelectorAll("input");
+
+  for (const input of inputs) {
+    input.style.backgroundColor = "#d9f5df";
+    input.style.color = "#103b12";
+    input.style.padding = "10px";
+    input.style.marginBottom = "10px";
+    input.style.border = "2px solid #62a866";
+    input.style.borderRadius = "6px";
+    input.style.boxSizing = "border-box";
+    input.style.width = "100%";
+  }
+
+  // Slider styling
+  thicknessSlider.style.accentColor = "#80cf89";
+  thicknessSlider.style.cursor = "pointer";
+  thicknessSlider.style.padding = "0";
+  thicknessSlider.style.border = "none";
+
+  thicknessLabel.style.color = "#d9f5df";
+  thicknessLabel.style.fontWeight = "bold";
+  thicknessLabel.style.display = "block";
+  thicknessLabel.style.marginTop = "15px";
+
+  // Export button
+  exportButton.style.backgroundColor = "#80cf89";
+  exportButton.style.color = "#103b12";
+  exportButton.style.width = "100%";
+  exportButton.style.fontWeight = "bold";
+}
+
+sideBar.append(exportButton);
+styleSidebar();
 updateHistoryButtons();

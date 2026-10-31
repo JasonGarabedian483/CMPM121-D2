@@ -29,13 +29,9 @@ app.style.minHeight = "100vh";
 document.body.style.margin = "0";
 document.body.style.backgroundColor = "#a8e7bb";
 
-heading.style.color = "#103b12";
-message.style.color = "#103b12";
-
 // styling for the work space
 const workSpace = document.createElement("div");
 workSpace.style.display = "flex";
-workSpace.style.flexDirection = "row";
 workSpace.style.alignItems = "flex-start";
 workSpace.style.gap = "15px";
 workSpace.style.width = "max-content";
@@ -63,6 +59,17 @@ sideBar.style.boxSizing = "border-box";
 workSpace.append(canvasArea, sideBar);
 app.append(heading, message, workSpace);
 
+function styleButton(button: HTMLButtonElement) {
+  button.style.backgroundColor = "#62a866";
+  button.style.color = "#103b12";
+  button.style.border = "2px solid #103b12";
+  button.style.padding = "10px 15px";
+  button.style.margin = "4px";
+  button.style.borderRadius = "6px";
+  button.style.cursor = "pointer";
+  button.style.fontWeight = "bold";
+}
+
 // data for drawing strokes
 
 type Point = {
@@ -83,9 +90,7 @@ type Sticker = {
 };
 
 type DrawCommand = {
-  kind: "stroke" | "sticker";
   draw: (target: CanvasRenderingContext2D) => void;
-  stroke?: Stroke;
 };
 
 type Tool = {
@@ -97,7 +102,6 @@ type Tool = {
   size?: number;
 };
 
-const strokes: Stroke[] = [];
 let currentStroke: Stroke | null = null;
 let currentPointerId: number | null = null;
 const commands: DrawCommand[] = [];
@@ -114,7 +118,6 @@ let selectedTool = tools[0];
 let currentSticker: Sticker | null = null;
 
 // mouse position tracking
-
 function getPointerPos(event: PointerEvent): Point {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -147,7 +150,6 @@ function drawStroke(stroke: Stroke, target: CanvasRenderingContext2D = ctx) {
 }
 
 // sticker drawing function
-
 function drawSticker(sticker: Sticker, target: CanvasRenderingContext2D) {
   target.save();
   target.font = `${sticker.size}px sans-serif`;
@@ -170,9 +172,7 @@ function addCommand(command: DrawCommand) {
 
 function replay(target: CanvasRenderingContext2D) {
   for (const command of commands) {
-    target.save();
     command.draw(target);
-    target.restore();
   }
 }
 
@@ -205,7 +205,6 @@ function cancelGesture() {
 }
 
 // drawing event listeners
-
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button !== 0 || currentPointerId !== null) {
     return;
@@ -231,9 +230,6 @@ canvas.addEventListener("pointerdown", (event) => {
   render();
 });
 
-//==========================================================//
-// Currently doesn't handle stickers at all, will fix later //
-//==========================================================//
 canvas.addEventListener("pointermove", (event) => {
   if (currentStroke === null || event.pointerId !== currentPointerId) {
     return;
@@ -248,10 +244,7 @@ canvas.addEventListener("pointerup", (event) => {
 
   if (currentStroke !== null) {
     const stroke = currentStroke;
-    strokes.push(stroke);
     addCommand({
-      kind: "stroke",
-      stroke: stroke,
       draw(target) {
         drawStroke(stroke, target);
       },
@@ -260,9 +253,7 @@ canvas.addEventListener("pointerup", (event) => {
 
   if (currentSticker !== null) {
     const sticker = currentSticker;
-
     addCommand({
-      kind: "sticker",
       draw(target) {
         drawSticker(sticker, target);
       },
@@ -295,15 +286,7 @@ function showTools() {
   for (const tool of tools) {
     const button = document.createElement("button");
     button.textContent = tool.name;
-
-    button.style.backgroundColor = "#62a866";
-    button.style.color = "#103b12";
-    button.style.border = "2px solid #103b12";
-    button.style.padding = "10px 15px";
-    button.style.margin = "4px";
-    button.style.borderRadius = "6px";
-    button.style.cursor = "pointer";
-    button.style.fontWeight = "bold";
+    styleButton(button);
 
     if (tool === selectedTool) {
       button.style.backgroundColor = "#80cf89";
@@ -331,10 +314,6 @@ thicknessSlider.type = "range";
 thicknessSlider.min = "1";
 thicknessSlider.max = "30";
 thicknessSlider.value = "4";
-
-thicknessSlider.style.width = "100%";
-thicknessSlider.style.cursor = "pointer";
-thicknessSlider.style.accentColor = "#526ce5";
 
 thicknessSlider.addEventListener("input", () => {
   const thickness = Number(thicknessSlider.value);
@@ -385,7 +364,6 @@ function updateHistoryButtons() {
 }
 
 // redraw button
-
 const redrawButton = document.createElement("button");
 redrawButton.textContent = "Redraw";
 
@@ -397,7 +375,6 @@ redrawButton.addEventListener("click", () => {
 sideBar.append(redrawButton);
 
 //Undo Button
-
 const undoButton = document.createElement("button");
 undoButton.textContent = "Undo";
 
@@ -413,7 +390,6 @@ undoButton.addEventListener("click", () => {
 sideBar.append(undoButton);
 
 //Redo Button
-
 const redoButton = document.createElement("button");
 redoButton.textContent = "Redo";
 
@@ -429,7 +405,6 @@ redoButton.addEventListener("click", () => {
 sideBar.append(redoButton);
 
 // clear button
-
 const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
 
@@ -448,7 +423,6 @@ clearButton.addEventListener("click", () => {
 sideBar.append(clearButton);
 
 // export button
-
 const exportButton = document.createElement("button");
 exportButton.textContent = "Export PNG";
 
@@ -477,6 +451,7 @@ exportButton.addEventListener("click", () => {
   }, "image/png");
 });
 
+// sidebar styling function
 function styleSidebar() {
   const headings = sideBar.querySelectorAll("h3");
 
@@ -487,20 +462,13 @@ function styleSidebar() {
   }
 
   const buttons = sideBar.querySelectorAll("button");
-
   for (const button of buttons) {
-    button.style.backgroundColor = "#62a866";
-    button.style.color = "#103b12";
-    button.style.border = "2px solid #103b12";
-    button.style.padding = "10px 15px";
-    button.style.margin = "4px";
-    button.style.borderRadius = "6px";
-    button.style.cursor = "pointer";
-    button.style.fontWeight = "bold";
+    if (!toolButtons.contains(button)) {
+      styleButton(button);
+    }
   }
 
   const inputs = sideBar.querySelectorAll("input");
-
   for (const input of inputs) {
     input.style.backgroundColor = "#d9f5df";
     input.style.color = "#103b12";
@@ -512,12 +480,11 @@ function styleSidebar() {
     input.style.width = "100%";
   }
 
-  // Slider styling
+  // thickness slider styling
   thicknessSlider.style.accentColor = "#80cf89";
   thicknessSlider.style.cursor = "pointer";
   thicknessSlider.style.padding = "0";
   thicknessSlider.style.border = "none";
-
   thicknessLabel.style.color = "#d9f5df";
   thicknessLabel.style.fontWeight = "bold";
   thicknessLabel.style.display = "block";
